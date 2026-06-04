@@ -12,6 +12,7 @@ class Cliente (models.Model):
 
     def __str__(self):
         return f"{self. nombre} ({self.id})"
+    
 
 
 class Vehiculo (models.Model):
@@ -90,6 +91,9 @@ class OrdenReparacion(models.Model):
 
     def __str__(self):
         return f"Orden #{self.id_orden} - {self.vehiculo.placa}"
+    
+
+    
 
 
 class DetalleServicio(models.Model):
