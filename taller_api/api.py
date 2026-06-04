@@ -14,7 +14,7 @@ from .serializers import (
     DetalleServicioSerializer
     )
 
-
+# Controla las operaciones CRUD del modelo Cliente en la API
 class ClienteViewSet(viewsets.ModelViewSet):
     queryset = Cliente.objects.all().order_by("id")
     permission_classes = [permissions.AllowAny] ## cambiar si se necesita estar autenticado
@@ -22,24 +22,32 @@ class ClienteViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]## Proteccion de ruta
     search_fields = ["nombre", "telefono", "correo"]
 
+
+# Controla la gestión de vehículos y permite búsqueda por campos relacionados
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.select_related("cliente").all().order_by("id")
     serializer_class = VehiculoSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ["placa", "marca", "modelo", "cliente__nombre"]
 
+
+# Maneja los servicios disponibles en el sistema
 class ServicioViewSet(viewsets.ModelViewSet):
     queryset = Servicio.objects.all().order_by("id")
     serializer_class = ServicioSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ["nombre", "descripcion"]
 
+
+# Maneja los datos de mecánicos registrados en el sistema
 class MecanicoViewSet(viewsets.ModelViewSet):
     queryset = Mecanico.objects.all().order_by("id_mecanico")
     serializer_class = MecanicoSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ["nombre", "especialidad", "estado"]
 
+
+# Controla las órdenes de reparación con relaciones a vehículo y mecánico
 class OrdenReparacionViewSet(viewsets.ModelViewSet):
     queryset = (
         OrdenReparacion.objects
@@ -57,6 +65,8 @@ class OrdenReparacionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         return [drf_permissions.AllowAny()]
 
+
+# Maneja los detalles de servicios asociados a órdenes de reparación
 class DetalleServicioViewSet(viewsets.ModelViewSet):
     queryset = (
         DetalleServicio.objects

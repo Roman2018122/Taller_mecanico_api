@@ -6,7 +6,7 @@ class IsAdminOrReadOnly(BasePermission):
     Lectura para cualquiera.
     Crear/actualizar/eliminar solo para usuarios staff (admin).
     """
-
+#Protege las rutas del admin y permite hacer get a usuarios sin  autenticar
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return True

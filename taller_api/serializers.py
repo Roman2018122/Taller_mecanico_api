@@ -5,7 +5,7 @@ from .models import Cliente, Vehiculo, Servicio, Mecanico, DetalleServicio, Orde
 
 
 
-
+# Convierte y valida datos del modelo Cliente para la API
 class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cliente
@@ -34,7 +34,7 @@ class ClienteSerializer(serializers.ModelSerializer):
 
         return value
 
-
+# Convierte datos del modelo Vehiculo y agrega información del cliente
 class VehiculoSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.ReadOnlyField(source="cliente.nombre")
 
@@ -57,7 +57,7 @@ class VehiculoSerializer(serializers.ModelSerializer):
 
         return value
 
-
+# Maneja la serialización y validación del modelo Servicio
 class ServicioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Servicio
@@ -83,7 +83,7 @@ class ServicioSerializer(serializers.ModelSerializer):
         return value
 
 
-
+# Serializa datos del modelo Mecanico y valida teléfono
 
 class  MecanicoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -103,7 +103,7 @@ class  MecanicoSerializer(serializers.ModelSerializer):
     
 
 
-
+# Serializa órdenes de reparación y muestra datos relacionados del vehículo y mecánico
 class OrdenReparacionSerializer(serializers.ModelSerializer):
     vehiculo_placa = serializers.ReadOnlyField(source="vehiculo.placa")
     mecanico_nombre = serializers.ReadOnlyField(source="mecanico.nombre")
@@ -129,6 +129,7 @@ class OrdenReparacionSerializer(serializers.ModelSerializer):
         return data
 
 
+# Serializa detalle de servicios y valida cantidad y precio
 class DetalleServicioSerializer(serializers.ModelSerializer):
 
     class Meta:
