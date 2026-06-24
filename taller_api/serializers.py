@@ -1,7 +1,16 @@
 from rest_framework import serializers
 from datetime import date
 
-from .models import Cliente, Vehiculo, Servicio, Mecanico, DetalleServicio, OrdenReparacion
+from .models import (
+    ##
+    Cliente, 
+    Vehiculo, 
+    Servicio, 
+    Mecanico, 
+    DetalleServicio, 
+    OrdenReparacion
+    )
+
 
 
 
@@ -37,6 +46,8 @@ class ClienteSerializer(serializers.ModelSerializer):
 # Convierte datos del modelo Vehiculo y agrega información del cliente
 class VehiculoSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.ReadOnlyField(source="cliente.nombre")
+
+    modelo_nombre = serializers.ReadOnlyField(source="modelo_vehiculo.nombre")
 
     class Meta:
         model = Vehiculo

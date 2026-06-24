@@ -41,7 +41,7 @@ class ServicioViewSet(viewsets.ModelViewSet):
 
 # Maneja los datos de mecánicos registrados en el sistema
 class MecanicoViewSet(viewsets.ModelViewSet):
-    queryset = Mecanico.objects.all().order_by("id_mecanico")
+    queryset = Mecanico.objects.all().order_by("id")
     serializer_class = MecanicoSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ["nombre", "especialidad", "estado"]
@@ -72,7 +72,7 @@ class DetalleServicioViewSet(viewsets.ModelViewSet):
         DetalleServicio.objects
         .select_related("orden", "servicio")
         .all()
-        .order_by("id_detalle")
+        .order_by("id")
     )
     serializer_class = DetalleServicioSerializer
     permission_classes = [IsAdminOrReadOnly]
