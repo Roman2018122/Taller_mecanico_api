@@ -16,26 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.views.decorators.csrf import csrf_exempt
-
-
-from taller_api.api import(
-    ClienteViewSet,
-    VehiculoViewSet,
-    ServicioViewSet,
-    MecanicoViewSet,
-)
-
-
-
-    
-
-
-
-
 
 urlpatterns = [
+    # 1. Filtro para el administrador de Django
     path('admin/', admin.site.urls),
+    
+    # 2. Filtro general: Deja pasar todo el tráfico limpio a la app taller_api
     path('', include('taller_api.urls')),
-
 ]
