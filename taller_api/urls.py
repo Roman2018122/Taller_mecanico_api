@@ -1,42 +1,69 @@
-from rest_framework import routers
-
 from django.urls import path, include
+from rest_framework import routers
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
 
+# Importación de todas tus vistas (ViewSets) de api.py
+from .api import (
+    # Módulo 1
+    ClienteViewSet, MarcaViewSet, ProveedorViewSet, RepuestoViewSet,
+    MetodoPagoViewSet, ServicioViewSet, EspecialidadesViewSet, RolSistemaViewSet,
+    
+    # Módulo 2
+    ModeloVehiculoViewSet, CompraInventarioViewSet, PerfilUsuarioViewSet, MecanicoViewSet,
+    
+    # Módulo 3
+    VehiculoViewSet, DetalleCompraInventarioViewSet, CitaWebViewSet, OrdenReparacionViewSet,
+    
+    # Módulo 4
+    DetalleServicioViewSet, DetalleRepuestoOrdenViewSet, FacturaViewSet, RegistroPagoViewSet
+)
 
-
-from .api import  ClienteViewSet
-from .api import VehiculoViewSet
-from .api import ServicioViewSet
-from .api import MecanicoViewSet
-from .api import OrdenReparacionViewSet
-from .api import DetalleServicioViewSet
-
+# Inicializamos el DefaultRouter
 router = routers.DefaultRouter()
 
-router.register('api/Cliente', ClienteViewSet, 'clientes')
-router.register('api/Vehiculo', VehiculoViewSet, 'vehiculos' )
-router.register('api/Servicio', ServicioViewSet,  'servicios')
-router.register('api/Mecanico', MecanicoViewSet,  'mecanico')
-router.register('api/OrdenReparacion', OrdenReparacionViewSet, 'ordenReparacion')
-router.register('api/DetalleServicio', DetalleServicioViewSet, 'detalleServicio')
+# ========================================================
+# REGISTRO DE ENDPOINTS EN EL ROUTER
+# ========================================================
+# Módulo 1
+router.register(r'clientes', ClienteViewSet, basename='cliente')
+router.register(r'marcas', MarcaViewSet, basename='marca')
+router.register(r'proveedores', ProveedorViewSet, basename='proveedor')
+router.register(r'repuestos', RepuestoViewSet, basename='repuesto')
+router.register(r'metodos-pago', MetodoPagoViewSet, basename='metodopago')
+router.register(r'servicios', ServicioViewSet, basename='servicio')
+router.register(r'especialidades', EspecialidadesViewSet, basename='especialidades')
+router.register(r'roles-sistema', RolSistemaViewSet, basename='rolsistema')
+
+# Módulo 2
+router.register(r'modelos-vehiculo', ModeloVehiculoViewSet, basename='modelovehiculo')
+router.register(r'compras-inventario', CompraInventarioViewSet, basename='comprainventario')
+router.register(r'perfiles-usuario', PerfilUsuarioViewSet, basename='perfilusuario')
+router.register(r'mecanicos', MecanicoViewSet, basename='mecanico')
+
+# Módulo 3
+router.register(r'vehiculos', VehiculoViewSet, basename='vehiculo')
+router.register(r'detalles-compra', DetalleCompraInventarioViewSet, basename='detallecomprainventario')
+router.register(r'citas-web', CitaWebViewSet, basename='citaweb')
+router.register(r'ordenes-reparacion', OrdenReparacionViewSet, basename='ordenreparacion')
+
+# Módulo 4
+router.register(r'detalles-servicio', DetalleServicioViewSet, basename='detalleservicio')
+router.register(r'detalles-repuesto', DetalleRepuestoOrdenViewSet, basename='detallerepuestoorden')
+router.register(r'facturas', FacturaViewSet, basename='factura')
+router.register(r'registros-pago', RegistroPagoViewSet, basename='registropago')
 
 
+# ========================================================
+# ESTRUCTURA FINAL DE RUTAS DE LA API
+# ========================================================
 urlpatterns = [
-    path('', include(router.urls)),
+    # Agrupa todos los endpoints del router bajo el prefijo api/v1/
+    path('api/v1/', include(router.urls)),
 
-    path(
-        'api/login/',
-        TokenObtainPairView.as_view(),
-        name='token_obtain_pair'
-    ),
-
-    path(
-        'api/token/refresh/',
-        TokenRefreshView.as_view(),
-        name='token_refresh'
-    ),
+    # Rutas para el manejo de autenticación de usuarios (SimpleJWT)
+    path('api/v1/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
