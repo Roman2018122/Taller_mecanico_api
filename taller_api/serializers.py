@@ -454,7 +454,6 @@ class CitaWebSerializer(serializers.ModelSerializer):
 ##ORDEN REPARACION SERIALIZER
 class OrdenReparacionSerializer(serializers.ModelSerializer):
     vehiculo_placa = serializers.ReadOnlyField(source="vehiculo.placa")
-    mecanico_nombre = serializers.ReadOnlyField(source="mecanico.nombre")
 
     class Meta:
         model = OrdenReparacion
@@ -658,35 +657,7 @@ class RegistroPagoSerializer(serializers.ModelSerializer):
         return pago
 
 
-##CLIENTE SERIALIZER
-## Convierte y valida datos del modelo Cliente para la API
-class ClienteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Cliente
-        fields =  "__all__"
-        read_only_fields = ('created_at',)
-        
-    def validate_nombre(self, value):
-        value = value.strip()
 
-        if len(value) < 3:
-            raise serializers.ValidationError(
-                "El nombre debe tener al menos 3 caracteres."
-            )
-
-        return value
-        
-
-    def validate_telefono(self, value):
-
-        value = value.strip()
-
-        if not value.isdigit():
-            raise serializers.ValidationError(
-                "El teléfono solo puede contener números."
-            )
-
-        return value
 
 
 

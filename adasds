@@ -1,0 +1,71 @@
+[33mcommit 99b8dace0634bcc5710758c4b30536fceaf47aee[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 24 22:47:04 2026 -0500
+
+    urls de config.py
+
+[33mcommit 15a56cd0e0efbb2206f428a7eef227fa3626edf6[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 24 22:45:22 2026 -0500
+
+    Importacion de las vistas creadas por modulos en api en (urls.py)
+
+[33mcommit 5c76f94c460fb1778dc01c045361539d3239878e[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 24 22:34:59 2026 -0500
+
+    Implementacion de todas las Views en (api.py),
+
+[33mcommit ec14fc12c68e9060325bf9f9e78e81254af746c1[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 24 14:42:29 2026 -0500
+
+    Creacion y Actualizacion de serializers del proyecto
+
+[33mcommit a0f08686f6c4cc67dc1a857a5a0126a5f9506860[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 24 00:14:15 2026 -0500
+
+    Initial commit
+
+[33mcommit 2f1a611dbb408cb408efef01c6eab6f2ee1d6524[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 24 00:04:52 2026 -0500
+
+    first commit
+
+[33mcommit 6cf2f525088170f2e31750b17f45380023b1eef5[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Thu Jun 4 02:53:48 2026 -0500
+
+    documentacion
+
+[33mcommit a4a499a36bc6ee1530f33aa3774d237eab57eecc[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Thu Jun 4 02:44:15 2026 -0500
+
+    api completa
+
+[33mcommit b9b3663b611fdf850b6958651c9c970532edfade[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Thu Jun 4 01:52:32 2026 -0500
+
+    api completa
+
+[33mcommit 446e3db41caf8ebfbbc3186d367a281cb8f8dd50[m
+Author: Roman2018122 <jonathantorres1118@Gmail.com>
+Date:   Wed Jun 3 21:53:07 2026 -0500
+
+    urls.py
+
+[33mcommit a65ef503acc8703d5adeac226334f6f43455c5ec[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 3 06:47:07 2026 -0500
+
+    commit de la estructura creada
+
+[33mcommit 5fd487993c06e1a35a4b216f8750c265435cab81[m
+Author: Roman2018122 <jonathantorres1118@gmail.com>
+Date:   Wed Jun 3 06:45:41 2026 -0500
+
+    First commit
