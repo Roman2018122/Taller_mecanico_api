@@ -314,6 +314,38 @@ class PerfilUsuarioSerializer(serializers.ModelSerializer):
                     "La cédula de identidad debe contener únicamente números."
                 )
         return value
+    
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+##SERIALIZADOR
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # 1. Genera los tokens estándar (access y refresh)
+        data = super().validate(attrs)
+        
+        # 2. Buscamos el PerfilUsuario asociado al usuario que se está logueando
+        # Asumiendo que en tu modelo PerfilUsuario el campo se relaciona con 'user'
+        try:
+            perfil = self.user.perfilusuario # O de acuerdo a cómo definiste el related_name
+            perfil_data = PerfilUsuarioSerializer(perfil).data
+            
+            # 3. Estructuramos lo que Flutter espera recibir
+            data['user'] = {
+                'id': self.user.id,
+                'username': self.user.username,
+                # Usamos el 'rol_nombre' que ya calcula tu serializador de forma nativa
+                'role': perfil_data.get('rol_nombre', 'mecanico'), 
+                'cedula': perfil_data.get('cedula_identidad'),
+            }
+        except Exception:
+            # En caso de que un usuario (como el superuser del admin) no tenga perfil creado aún
+            data['user'] = {
+                'id': self.user.id,
+                'username': self.user.username,
+                'role': 'admin' if self.user.is_superuser else 'mecanico'
+            }
+            
+        return data
 
 
 ##MECANICO SERIALIZERS

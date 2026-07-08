@@ -1,8 +1,7 @@
 from django.urls import path, include
 from rest_framework import routers
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
+    TokenRefreshView, # Dejamos solo la de refrescar tokens de la librería nativa
 )
 
 # Importación de todas tus vistas (ViewSets) de api.py
@@ -18,7 +17,10 @@ from .api import (
     VehiculoViewSet, DetalleCompraInventarioViewSet, CitaWebViewSet, OrdenReparacionViewSet,
     
     # Módulo 4
-    DetalleServicioViewSet, DetalleRepuestoOrdenViewSet, FacturaViewSet, RegistroPagoViewSet
+    DetalleServicioViewSet, DetalleRepuestoOrdenViewSet, FacturaViewSet, RegistroPagoViewSet,
+
+    # 🛠️ IMPLEMENTACIÓN: Importamos tu nueva vista personalizada desde api.py
+    CustomTokenObtainPairView
 )
 
 # Inicializamos el DefaultRouter
@@ -63,7 +65,7 @@ urlpatterns = [
     # Agrupa todos los endpoints del router bajo el prefijo api/v1/
     path('api/v1/', include(router.urls)),
 
-    # Rutas para el manejo de autenticación de usuarios (SimpleJWT)
-    path('api/v1/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # 🛠️ IMPLEMENTACIÓN: Usamos tu CustomTokenObtainPairView en lugar de TokenObtainPairView
+    path('api/v1/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
