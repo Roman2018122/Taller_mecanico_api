@@ -3,6 +3,10 @@ from rest_framework import permissions as drf_permissions
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAdminOrReadOnly
 
+from django.db.models.deletion import ProtectedError
+from rest_framework.response import Response
+from rest_framework import status
+
 
 from .models import (
     ##Modulo1
@@ -12,8 +16,9 @@ from .models import (
     ##modulo3
     Vehiculo, DetalleCompraInventario, CitaWeb, OrdenReparacion,
     ##Modulo4
-    DetalleServicio, DetalleRepuestoOrden, Factura, RegistroPago
+    DetalleServicio, DetalleRepuestoOrden, Factura, RegistroPago,
 
+    
     )
 from .serializers import (
     ##Modulo1
@@ -27,8 +32,12 @@ from .serializers import (
     CitaWebSerializer, OrdenReparacionSerializer,
     ##Modulo4
     DetalleServicioSerializer, DetalleRepuestoOrdenSerializer, 
-    FacturaSerializer, RegistroPagoSerializer )
+    FacturaSerializer, RegistroPagoSerializer, 
+    
+    RegistroClienteSerializer, )
 
+    
+    
 # ========================================================
 # VISTAS: MÓDULO 1 - TABLAS BASE INDEPENDIENTES
 # ========================================================
@@ -37,21 +46,42 @@ class ClienteViewSet(viewsets.ModelViewSet):
     CRUD completo para la gestión de Clientes.
     Permite buscar por nombre, teléfono o correo.
     """
-    queryset = Cliente.objects.all().order_by('id')
+    queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ['nombre', 'telefono', 'correo']
+    filterset_fields = ["created_at"]
+    ordering_fields = ["nombre"]
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        try:
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except ProtectedError:
+            return Response(
+                {   
+                    "detail": (
+                        "No se puede eliminar este cliente porque tiene "
+                        "vehículos registrados."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class MarcaViewSet(viewsets.ModelViewSet):
     """
     CRUD para las Marcas de vehículos y repuestos.
     """
-    queryset = Marca.objects.all().order_by('id')
+    queryset = Marca.objects.all()
     serializer_class = MarcaSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ['nombre']
-
+    ordering_fields = [
+    "nombre"
+    ]
 
 class ProveedorViewSet(viewsets.ModelViewSet):
     """
@@ -93,6 +123,10 @@ class ServicioViewSet(viewsets.ModelViewSet):
     serializer_class = ServicioSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ['nombre', 'descripcion']
+    ordering_fields = [
+    "nombre",
+    "precio_referencial"
+    ]
 
 
 class EspecialidadesViewSet(viewsets.ModelViewSet):
@@ -124,10 +158,11 @@ class ModeloVehiculoViewSet(viewsets.ModelViewSet):
     CRUD para los Modelos de Vehículos.
     Optimizado con select_related para traer la Marca asociada de inmediato.
     """
-    queryset = ModeloVehiculo.objects.select_related('marca').all().order_by('id')
+    queryset = ModeloVehiculo.objects.select_related('marca').all()
     serializer_class = ModeloVehiculoSerializer
     permission_classes = [IsAdminOrReadOnly]
     search_fields = ['nombre', 'marca__nombre', 'tipo_vehiculo']
+
 
 
 class CompraInventarioViewSet(viewsets.ModelViewSet):
@@ -168,12 +203,22 @@ class MecanicoViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     """
     CRUD completo de Vehículos.
-    Optimizado para traer los datos del cliente y el modelo en una sola consulta SQL.
+    Optimizado para traer el cliente y el modelo del vehículo en una sola consulta.
     """
-    queryset = Vehiculo.objects.select_related('modelo_vehiculo__marca', 'cliente').all().order_by('id')
+    queryset = Vehiculo.objects.select_related(
+        "cliente",
+        "modelo_vehiculo",
+        "modelo_vehiculo__marca"
+    ).all().order_by("id")
+
     serializer_class = VehiculoSerializer
     permission_classes = [IsAdminOrReadOnly]
-    search_fields = ['placa', 'cliente__nombre', 'modelo_vehiculo__nombre']
+    search_fields = [
+        "placa",
+        "cliente__nombre",
+        "modelo_vehiculo__nombre",
+        "modelo_vehiculo__marca__nombre",
+    ]
 
 
 class DetalleCompraInventarioViewSet(viewsets.ModelViewSet):
@@ -187,22 +232,68 @@ class DetalleCompraInventarioViewSet(viewsets.ModelViewSet):
 
 class CitaWebViewSet(viewsets.ModelViewSet):
     """
-    Gestión de Citas solicitadas por los clientes vía web.
+    Gestión de Citas solicitadas por los clientes.
+    Optimizado para traer el cliente y el vehículo en una sola consulta.
     """
-    queryset = CitaWeb.objects.select_related('cliente', 'vehiculo__modelo_vehiculo').all().order_by('-fecha_sugerida')
+    queryset = CitaWeb.objects.select_related(
+        "cliente",
+        "vehiculo",
+        "vehiculo__modelo_vehiculo",
+        "vehiculo__modelo_vehiculo__marca"
+    ).all().order_by("-fecha_sugerida")
+
     serializer_class = CitaWebSerializer
     permission_classes = [IsAdminOrReadOnly]
-    search_fields = ['cliente__nombre', 'vehiculo__placa', 'estado']
+
+    search_fields = [
+        "cliente__nombre",
+        "vehiculo__placa",
+        "vehiculo__modelo_vehiculo__nombre",
+        "estado",
+    ]
+
+
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 
 
 class OrdenReparacionViewSet(viewsets.ModelViewSet):
     """
-    Cabecera principal de Órdenes de Reparación en el taller.
+    Cabecera principal de órdenes de reparación del taller.
     """
-    queryset = OrdenReparacion.objects.select_related('vehiculo__cliente').all().order_by('-fecha_ingreso')
+    queryset = OrdenReparacion.objects.select_related(
+        "vehiculo",
+        "vehiculo__cliente",
+        "vehiculo__modelo_vehiculo",
+        "vehiculo__modelo_vehiculo__marca",
+    ).order_by("-fecha_ingreso")
+
     serializer_class = OrdenReparacionSerializer
     permission_classes = [IsAdminOrReadOnly]
-    search_fields = ['id', 'vehiculo__placa', 'estado']
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+
+    search_fields = [
+        "vehiculo__placa",
+        "vehiculo__cliente__nombre",
+        "vehiculo__modelo_vehiculo__nombre",
+        "estado",
+    ]
+
+    filterset_fields = [
+        "estado",
+        "vehiculo",
+    ]
+
+    ordering_fields = [
+        "fecha_ingreso",
+        "fecha_salida",
+        "estado",
+    ]
 
 
 # ========================================================
@@ -211,13 +302,30 @@ class OrdenReparacionViewSet(viewsets.ModelViewSet):
 
 class DetalleServicioViewSet(viewsets.ModelViewSet):
     """
-    CRUD para los servicios/mano de obra aplicados a una orden.
-    Optimizado con select_related para traer la orden, el servicio y el mecánico asignado.
+    CRUD para los servicios aplicados a una orden.
     """
-    queryset = DetalleServicio.objects.select_related('orden', 'servicio', 'mecanico').all().order_by('id')
+    queryset = DetalleServicio.objects.select_related(
+        "orden",
+        "orden__vehiculo",
+        "orden__vehiculo__cliente",
+        "servicio",
+        "mecanico",
+    ).order_by("id")
+
     serializer_class = DetalleServicioSerializer
     permission_classes = [IsAdminOrReadOnly]
-    search_fields = ['orden__id', 'servicio__nombre', 'mecanico__nombre']
+
+    search_fields = [
+        "orden__vehiculo__placa",
+        "servicio__nombre",
+        "mecanico__nombre",
+    ]
+
+    ordering_fields = [
+        "cantidad",
+        "precio_unitario",
+        "subtotal",
+    ]
 
 
 class DetalleRepuestoOrdenViewSet(viewsets.ModelViewSet):
@@ -256,6 +364,34 @@ class RegistroPagoViewSet(viewsets.ModelViewSet):
 ##SERIALIZADOR
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
+from rest_framework.permissions import AllowAny
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+
+# 🚀 Importas el serializer que acabamos de mover a serializers.py
+from .serializers import RegistroClienteSerializer 
+
+class RegistroClienteView(APIView):
+    # Permite que cualquier persona se registre sin mandar Token de seguridad
+    permission_classes = [AllowAny] 
+
+    def post(self, request):
+        serializer = RegistroClienteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Cliente registrado con éxito y rol asignado"}, 
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+

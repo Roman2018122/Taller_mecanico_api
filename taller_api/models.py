@@ -6,23 +6,42 @@ from django.contrib.auth.models import User
 ## MÓDULO 1: TABLAS BASE INDEPENDIENTES (Sin dependencias)
 ## ========================================================
 
+from django.contrib.auth.models import User
+
+
 class Cliente(models.Model):
+    usuario = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="cliente",
+        null=True,
+        blank=True,
+    )
+
     nombre = models.CharField(max_length=200)
     telefono = models.CharField(max_length=15)
-    correo = models.EmailField(max_length=100) 
+    correo = models.EmailField(max_length=100)
     direccion = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.nombre} ({self.id})"
+    
+   
 
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=50, unique=True)
     pais_origen = models.CharField(max_length=50, blank=True, null=True)
 
+    class Meta:
+        ordering = ["nombre"]
+
     def __str__(self):
         return self.nombre
+    
+    
 
 
 class Proveedor(models.Model):
@@ -65,6 +84,11 @@ class Servicio(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)],
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nombre"]
 
     def __str__(self):
         return self.nombre
@@ -103,7 +127,8 @@ class ModeloVehiculo(models.Model):
     tipo_vehiculo = models.CharField(max_length=15, choices=TIPO_VEHICULO_CHOICES, default='AUTO')
     
     class Meta:
-        unique_together = ['marca', 'nombre']
+        unique_together = ["marca", "nombre"]
+        ordering = ["marca__nombre", "nombre"]
 
     def __str__(self):
         return f"{self.marca.nombre} {self.nombre}"
@@ -127,6 +152,31 @@ class PerfilUsuario(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.rol.nombre_rol}"
+    
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from django.contrib.auth.models import User
+
+@receiver(post_save, sender=User)
+def crear_perfil_usuario_automatico(sender, instance, created, **kwargs):
+    if created:
+        # 1. Si el usuario es el superusuario supremo de la terminal, le ponemos Administrador
+        if instance.is_superuser:
+            rol_admin, _ = RolSistema.objects.get_or_create(
+                nombre_rol="Administrador", 
+                defaults={"descripcion": "Acceso total al taller"}
+            )
+            PerfilUsuario.objects.get_or_create(usuario=instance, rol=rol_admin)
+        
+        # 2. 🚀 PARA CUALQUIER OTRO USUARIO NUEVO: Nace siendo Cliente por defecto
+        else:
+            rol_cliente, _ = RolSistema.objects.get_or_create(
+                nombre_rol="Cliente", 
+                defaults={"descripcion": "Usuario dueño de vehículos"}
+            )
+            PerfilUsuario.objects.get_or_create(usuario=instance, rol=rol_cliente)
+
+
 
 
 class Mecanico(models.Model):
@@ -139,6 +189,9 @@ class Mecanico(models.Model):
     telefono = models.CharField(max_length=20, blank=True, null=True)
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default="activo")
     especialidades = models.ManyToManyField(Especialidades, related_name="mecanicos", blank=True)
+
+    class Meta:
+        ordering = ["nombre"]
 
     def __str__(self):
         return self.nombre
@@ -160,6 +213,14 @@ class Vehiculo(models.Model):
         Cliente,
         on_delete=models.PROTECT,
         related_name="vehiculos",
+    )
+    color = models.CharField(
+        max_length=30,
+        blank=True
+    )
+    kilometraje = models.PositiveIntegerField(
+        null=True,
+        blank=True
     )
 
     def __str__(self):
@@ -184,6 +245,7 @@ class CitaWeb(models.Model):
     ESTADO_CITA_CHOICES = [
         ('SOLICITADA', 'Solicitada / Pendiente'),
         ('CONFIRMADA', 'Confirmada por el Taller'),
+        ('EN_PROCESO', 'En proceso'),
         ('CANCELADA', 'Cancelada'),
         ('COMPLETADA', 'Asistió / Convertida en Orden'),
     ]
@@ -211,6 +273,12 @@ class OrdenReparacion(models.Model):
     fecha_salida = models.DateTimeField(null=True, blank=True)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="pendiente")
     observaciones = models.TextField(blank=True, null=True)
+    mecanico_responsable = models.ForeignKey(
+        Mecanico,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
 
     def __str__(self):
         return f"Orden #{self.id} - {self.vehiculo.placa}"
@@ -282,3 +350,5 @@ class RegistroPago(models.Model):
 
     def __str__(self):
         return f"Pago a Factura {self.factura.numero_factura} por ${self.monto}"
+    
+

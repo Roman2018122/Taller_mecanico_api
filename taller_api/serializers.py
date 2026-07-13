@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from datetime import date, timezone
+from django.utils import timezone
+from datetime import datetime
+from datetime import date
 
 from .models import (
     Marca,
@@ -394,6 +396,7 @@ class MecanicoSerializer(serializers.ModelSerializer):
 class VehiculoSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.ReadOnlyField(source="cliente.nombre")
     modelo_nombre = serializers.ReadOnlyField(source="modelo_vehiculo.nombre")
+    marca_nombre = serializers.ReadOnlyField(source="modelo_vehiculo.marca.nombre")
 
     class Meta:
         model = Vehiculo
@@ -458,7 +461,9 @@ class CitaWebSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.ReadOnlyField(source="cliente.nombre")
     vehiculo_placa = serializers.ReadOnlyField(source="vehiculo.placa")
     vehiculo_modelo = serializers.ReadOnlyField(source="vehiculo.modelo_vehiculo.nombre")
-
+    marca_nombre = serializers.ReadOnlyField(
+    source="vehiculo.modelo_vehiculo.marca.nombre"
+    )
     class Meta:
         model = CitaWeb
         fields = "__all__"
@@ -485,26 +490,39 @@ class CitaWebSerializer(serializers.ModelSerializer):
 
 ##ORDEN REPARACION SERIALIZER
 class OrdenReparacionSerializer(serializers.ModelSerializer):
-    vehiculo_placa = serializers.ReadOnlyField(source="vehiculo.placa")
+    vehiculo_placa = serializers.ReadOnlyField(
+        source="vehiculo.placa"
+    )
+
+    cliente_nombre = serializers.ReadOnlyField(
+        source="vehiculo.cliente.nombre"
+    )
+
+    modelo_nombre = serializers.ReadOnlyField(
+        source="vehiculo.modelo_vehiculo.nombre"
+    )
 
     class Meta:
         model = OrdenReparacion
         fields = "__all__"
+        read_only_fields = ("fecha_ingreso",)
 
     def validate(self, data):
         fecha_salida = data.get("fecha_salida")
 
-        # 1. Si es una actualización (PUT/PATCH), el registro ya existe en la BD
         if self.instance:
             fecha_ingreso = self.instance.fecha_ingreso
         else:
-            # 2. Si es una creación (POST), la fecha de ingreso será el "ahora" de Postgres
             fecha_ingreso = timezone.now()
 
-        # 3. Ejecutamos tu validación con la fecha real obtenida
         if fecha_salida and fecha_salida < fecha_ingreso:
             raise serializers.ValidationError(
-                {"fecha_salida": "La fecha de salida no puede ser menor que la fecha de ingreso."}
+                {
+                    "fecha_salida": (
+                        "La fecha de salida no puede ser menor "
+                        "que la fecha de ingreso."
+                    )
+                }
             )
 
         return data
@@ -517,7 +535,7 @@ class OrdenReparacionSerializer(serializers.ModelSerializer):
 ##DETALLES DE SERVICIO SERIALIZER
 class DetalleServicioSerializer(serializers.ModelSerializer):
     # Campos informativos de solo lectura para evitar consultas extras en el backend
-    servicio_nombre = serializers.ReadOnlyField(source="servicio.nombre_servicio")
+    servicio_nombre = serializers.ReadOnlyField(source="servicio.nombre")
     mecanico_nombre = serializers.ReadOnlyField(source="mecanico.nombre")
 
     class Meta:
@@ -689,6 +707,45 @@ class RegistroPagoSerializer(serializers.ModelSerializer):
         return pago
 
 
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Accedemos al perfil y luego al nombre del rol del sistema
+        try:
+            nombre_del_rol = self.user.perfil.rol.nombre_rol.lower() # Devuelve 'administrador' o 'cliente'
+        except AttributeError:
+            nombre_del_rol = "cliente" # Fallback por si acaso
+            
+        data['user'] = {
+            'id': self.user.id,
+            'username': self.user.username,
+            'role': 'admin' if 'admin' in nombre_del_rol else 'cliente'
+        }
+        return data
+
+
+from rest_framework import serializers
+from django.contrib.auth.models import User
+
+class RegistroClienteSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password']
+
+    def create(self, validated_data):
+        # Esto crea el usuario base
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
+            password=validated_data['password']
+        )
+        # AL GUARDARSE AQUÍ, SE DISPARA TU SEÑAL AUTOMÁTICA Y LE PONE EL ROL "CLIENTE"
+        return user
 
 
 
