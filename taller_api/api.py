@@ -7,6 +7,27 @@ from django.db.models.deletion import ProtectedError
 from rest_framework.response import Response
 from rest_framework import status
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+
+from .serializers import UsuarioActualSerializer
+class UsuarioActualView(APIView):
+    """
+    Devuelve los datos y el rol del usuario autenticado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UsuarioActualSerializer(
+            request.user
+        )
+
+        return Response(serializer.data)
+    
+
+
 
 from .models import (
     ##Modulo1
@@ -201,18 +222,9 @@ class MecanicoViewSet(viewsets.ModelViewSet):
 # ========================================================
 
 class VehiculoViewSet(viewsets.ModelViewSet):
-    """
-    CRUD completo de Vehículos.
-    Optimizado para traer el cliente y el modelo del vehículo en una sola consulta.
-    """
-    queryset = Vehiculo.objects.select_related(
-        "cliente",
-        "modelo_vehiculo",
-        "modelo_vehiculo__marca"
-    ).all().order_by("id")
-
     serializer_class = VehiculoSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated]
+
     search_fields = [
         "placa",
         "cliente__nombre",
@@ -220,6 +232,52 @@ class VehiculoViewSet(viewsets.ModelViewSet):
         "modelo_vehiculo__marca__nombre",
     ]
 
+    def get_queryset(self):
+        queryset = Vehiculo.objects.select_related(
+            "cliente",
+            "modelo_vehiculo",
+            "modelo_vehiculo__marca",
+        ).order_by("id")
+
+        user = self.request.user
+
+        if (
+            hasattr(user, "perfil")
+            and user.perfil.rol.nombre_rol.lower() == "cliente"
+        ):
+            return queryset.filter(
+                cliente=user.cliente
+            )
+
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if (
+            hasattr(user, "perfil")
+            and user.perfil.rol.nombre_rol.lower() == "cliente"
+        ):
+            serializer.save(
+                cliente=user.cliente
+            )
+            return
+
+        serializer.save()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+
+        if (
+            hasattr(user, "perfil")
+            and user.perfil.rol.nombre_rol.lower() == "cliente"
+        ):
+            serializer.save(
+                cliente=user.cliente
+            )   
+            return
+
+        serializer.save()
 
 class DetalleCompraInventarioViewSet(viewsets.ModelViewSet):
     """
@@ -229,28 +287,73 @@ class DetalleCompraInventarioViewSet(viewsets.ModelViewSet):
     serializer_class = DetalleCompraInventarioSerializer
     permission_classes = [IsAdminOrReadOnly]
 
-
+from rest_framework import serializers
 class CitaWebViewSet(viewsets.ModelViewSet):
-    """
-    Gestión de Citas solicitadas por los clientes.
-    Optimizado para traer el cliente y el vehículo en una sola consulta.
-    """
-    queryset = CitaWeb.objects.select_related(
-        "cliente",
-        "vehiculo",
-        "vehiculo__modelo_vehiculo",
-        "vehiculo__modelo_vehiculo__marca"
-    ).all().order_by("-fecha_sugerida")
-
     serializer_class = CitaWebSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
-    search_fields = [
-        "cliente__nombre",
-        "vehiculo__placa",
-        "vehiculo__modelo_vehiculo__nombre",
-        "estado",
-    ]
+    def get_queryset(self):
+        queryset = CitaWeb.objects.select_related(
+            "cliente",
+            "vehiculo",
+            "vehiculo__modelo_vehiculo",
+            "vehiculo__modelo_vehiculo__marca",
+        ).order_by("-fecha_sugerida")
+
+        user = self.request.user
+
+        if (
+            hasattr(user, "perfil")
+            and user.perfil.rol.nombre_rol.lower()
+            == "cliente"
+        ):
+            return queryset.filter(
+                cliente=user.cliente
+            )
+
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if (
+            hasattr(user, "perfil")
+            and user.perfil.rol.nombre_rol.lower()
+            == "cliente"
+        ):
+            vehiculo = serializer.validated_data["vehiculo"]
+
+            if vehiculo.cliente_id != user.cliente.id:
+                raise serializers.ValidationError(
+                    {
+                        "vehiculo": (
+                            "No puedes crear citas para "
+                            "un vehículo de otro cliente."
+                        )
+                    }
+                )
+
+            serializer.save(
+                cliente=user.cliente,
+                estado="PENDIENTE",
+                mensaje_taller="",
+            )
+            return
+
+        serializer.save()
+        def perform_update(self, serializer):
+            user = self.request.user
+
+            if (
+                hasattr(user, "perfil")
+                and user.perfil.rol.nombre_rol.lower() == "cliente"
+            ):
+                serializer.save(
+                    cliente=user.cliente
+                )
+                return
+
+            serializer.save()
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -380,18 +483,28 @@ from rest_framework.permissions import AllowAny
 from .serializers import RegistroClienteSerializer 
 
 class RegistroClienteView(APIView):
-    # Permite que cualquier persona se registre sin mandar Token de seguridad
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = RegistroClienteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {"message": "Cliente registrado con éxito y rol asignado"}, 
-                status=status.HTTP_201_CREATED
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+        serializer = RegistroClienteSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
 
+        cliente = serializer.save()
 
+        return Response(
+            {
+                "message": (
+                    "Cliente registrado con éxito "
+                    "y rol asignado"
+                ),
+                "cliente": {
+                    "id": cliente.id,
+                    "nombre": cliente.nombre,
+                    "correo": cliente.correo,
+                    "usuario_id": cliente.usuario_id,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )

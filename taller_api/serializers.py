@@ -31,6 +31,173 @@ from .models import (
 ## TABLAS BASE INDEPENDIENTES (Sin dependencias)
 ## ========================================================
 
+from rest_framework import serializers
+
+
+class UsuarioActualSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)
+
+    rol = serializers.SerializerMethodField()
+    cliente_id = serializers.SerializerMethodField()
+    nombre = serializers.SerializerMethodField()
+    telefono = serializers.SerializerMethodField()
+    direccion = serializers.SerializerMethodField()
+
+    def get_rol(self, usuario):
+        try:
+            return usuario.perfil.rol.nombre_rol
+        except AttributeError:
+            return None
+
+    def get_cliente_id(self, usuario):
+        try:
+            return usuario.cliente.id
+        except AttributeError:
+            return None
+
+    def get_nombre(self, usuario):
+        try:
+            return usuario.cliente.nombre
+        except AttributeError:
+            nombre_completo = usuario.get_full_name().strip()
+            return nombre_completo or usuario.username
+
+    def get_telefono(self, usuario):
+        try:
+            return usuario.cliente.telefono
+        except AttributeError:
+            return None
+
+    def get_direccion(self, usuario):
+        try:
+            return usuario.cliente.direccion
+        except AttributeError:
+            return None
+        
+        
+
+
+from django.contrib.auth.models import User
+from django.db import transaction
+from rest_framework import serializers
+
+from .models import Cliente, PerfilUsuario, RolSistema
+
+
+class RegistroClienteSerializer(serializers.Serializer):
+    username = serializers.CharField(
+        min_length=4,
+        max_length=150,
+    )
+    password = serializers.CharField(
+        min_length=8,
+        write_only=True,
+    )
+    password_confirmacion = serializers.CharField(
+        min_length=8,
+        write_only=True,
+    )
+
+    nombre = serializers.CharField(
+        min_length=3,
+        max_length=200,
+    )
+    telefono = serializers.CharField(
+        max_length=15,
+    )
+    correo = serializers.EmailField(
+        max_length=100,
+    )
+    direccion = serializers.CharField(
+        max_length=200,
+    )
+
+    def validate_username(self, value):
+        value = value.strip()
+
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError(
+                "Este nombre de usuario ya está registrado."
+            )
+
+        return value
+
+    def validate_correo(self, value):
+        value = value.strip().lower()
+
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(
+                "Este correo ya está asociado a una cuenta."
+            )
+
+        return value
+
+    def validate_telefono(self, value):
+        value = value.strip()
+
+        if not value.isdigit():
+            raise serializers.ValidationError(
+                "El teléfono solo puede contener números."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password_confirmacion"]:
+            raise serializers.ValidationError(
+                {
+                    "password_confirmacion": (
+                        "Las contraseñas no coinciden."
+                    )
+                }
+            )
+
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        validated_data.pop("password_confirmacion")
+
+        username = validated_data.pop("username")
+        correo = validated_data["correo"]
+
+        rol_cliente = RolSistema.objects.get(
+            nombre_rol__iexact="cliente"
+        )
+
+        usuario = User.objects.create_user(
+            username=username,
+            email=correo,
+            password=password,
+        )
+
+        # get_or_create evita problemas si ya tienes una señal
+        # que crea el perfil automáticamente.
+        perfil, _ = PerfilUsuario.objects.get_or_create(
+            usuario=usuario,
+            defaults={
+                "rol": rol_cliente,
+            },
+        )
+
+        # Garantiza que el rol sea Cliente incluso si una señal
+        # creó el perfil con otro valor predeterminado.
+        if perfil.rol_id != rol_cliente.id:
+            perfil.rol = rol_cliente
+            perfil.save(update_fields=["rol"])
+
+        cliente = Cliente.objects.create(
+            usuario=usuario,
+            **validated_data,
+        )
+
+        return cliente
 ##CLIENTE SERIALIZER
 ## Convierte y valida datos del modelo Cliente para la API
 class ClienteSerializer(serializers.ModelSerializer):
@@ -402,6 +569,12 @@ class VehiculoSerializer(serializers.ModelSerializer):
         model = Vehiculo
         fields = "__all__"
 
+        extra_kwargs = {
+            "cliente": {
+                "required": False,
+            },
+        }
+
     def validate_placa(self, value):
         # Limpia espacios sueltos y fuerza mayúsculas (Ej: " pbx-1234 " -> "PBX-1234")
         value = value.strip().upper()
@@ -481,7 +654,13 @@ class CitaWebSerializer(serializers.ModelSerializer):
 
     def validate_estado(self, value):
         value = value.upper().strip()
-        estados_validos = ['SOLICITADA', 'CONFIRMADA', 'CANCELADA', 'COMPLETADA']
+        estados_validos = [
+            "PENDIENTE",
+            "ACEPTADA",
+            "REAGENDADA",
+            "CANCELADA",
+            "COMPLETADA",
+        ]
         if value not in estados_validos:
             raise serializers.ValidationError(
                 f"Estado de cita inválido. Opciones permitidas: {', '.join(estados_validos)}"
@@ -726,26 +905,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         }
         return data
 
-
-from rest_framework import serializers
-from django.contrib.auth.models import User
-
-class RegistroClienteSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'password']
-
-    def create(self, validated_data):
-        # Esto crea el usuario base
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data.get('email', ''),
-            password=validated_data['password']
-        )
-        # AL GUARDARSE AQUÍ, SE DISPARA TU SEÑAL AUTOMÁTICA Y LE PONE EL ROL "CLIENTE"
-        return user
 
 
 

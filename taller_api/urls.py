@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView, 
 )
 
+from taller_api.api import UsuarioActualView
 # Importación de todas mis vistas de api.py
 from .api import (
     # Módulo 1
@@ -61,4 +62,8 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Agregas la ruta pública para registrarse
     path('api/registro/', RegistroClienteView.as_view(), name='registro_publico'),
+
+    path("api/me/",
+    UsuarioActualView.as_view(),
+    name="usuario_actual"),
 ]

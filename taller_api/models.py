@@ -157,7 +157,9 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save
 from django.contrib.auth.models import User
 
+
 @receiver(post_save, sender=User)
+
 def crear_perfil_usuario_automatico(sender, instance, created, **kwargs):
     if created:
         # 1. Si el usuario es el superusuario supremo de la terminal, le ponemos Administrador
@@ -242,20 +244,29 @@ class DetalleCompraInventario(models.Model):
 
 
 class CitaWeb(models.Model):
-    ESTADO_CITA_CHOICES = [
-        ('SOLICITADA', 'Solicitada / Pendiente'),
-        ('CONFIRMADA', 'Confirmada por el Taller'),
-        ('EN_PROCESO', 'En proceso'),
-        ('CANCELADA', 'Cancelada'),
-        ('COMPLETADA', 'Asistió / Convertida en Orden'),
+    ESTADOS_CITA = [
+    ("PENDIENTE", "Pendiente"),
+    ("ACEPTADA", "Aceptada"),
+    ("REAGENDADA", "Reagendada"),
+    ("CANCELADA", "Cancelada"),
+    ("COMPLETADA", "Completada"),
     ]
-
+    
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="citas")
     vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, related_name="citas")
     fecha_sugerida = models.DateTimeField(help_text="Fecha y hora que el cliente desea asistir")
     motivo_consulta = models.TextField(help_text="Breve descripción de lo que le pasa al vehículo")
-    estado = models.CharField(max_length=20, choices=ESTADO_CITA_CHOICES, default='SOLICITADA')
+    estado = models.CharField(max_length=20, choices=ESTADOS_CITA, default='PENDIENTE')
+    mensaje_taller = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Mensaje del taller"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    fecha_confirmada = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha definitiva asignada por el taller")
 
     def __str__(self):
         return f"Cita #{self.id} - {self.cliente.nombre} ({self.fecha_sugerida.date()})"
